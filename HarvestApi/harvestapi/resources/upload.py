@@ -1,17 +1,17 @@
 import os
 from flask import request
 from flask_restful import Resource
-from harvestapi.resources.data_retrieve import metadatas
+from harvestapi.data_retrieve import metadatas
 
 
 def download(binary, name):
     # download the file
-    dl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'downloads')
+    dl_path = os.path.join(os.path.dirname(__file__), 'downloads')
     if not os.path.exists(dl_path):
         os.makedirs(dl_path)
     os.chdir(dl_path)
     try:
-        with open(name, "wb") as file:
+        with open(name, "w+b") as file:
             file.write(binary)
         metadatas(dl_path)
         return {'message': 'success', 'file': name}, 200

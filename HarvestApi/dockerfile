@@ -1,0 +1,10 @@
+FROM python:3.7
+WORKDIR /api
+COPY . /api
+RUN pip install flask gunicorn
+RUN pip install -r requirements.txt
+RUN python ./migrate.py db init
+RUN python ./migrate.py db migrate
+RUN python ./migrate.py db upgrade
+EXPOSE 8000
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "run:app"]

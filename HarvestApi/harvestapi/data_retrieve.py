@@ -1,7 +1,7 @@
 import hashlib
 import logging
 import os
-from flask import request
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +37,14 @@ def sha1_hash(file):
 
 
 def metadatas(path):
-    for dir_path, dir_names, file_names in os.walk(path):
-        for file_name in file_names:
-            file_with_path = os.path.join(path, file_name)
-            file_size = os.path.getsize(file_with_path)
-            # get the hashes of the files
-            md5_file_hash = md5_hash(file_with_path)
-            sha1_file_hash = sha1_hash(file_with_path)
-            # store the data in a dictionary
-            report = {'file_name': file_name.rsplit('.')[0], 'file_type': file_name.rsplit('.')[1],
-                      'file_size': file_size, 'md5': md5_file_hash, 'sha1': sha1_file_hash}
-            request.post('http://127.0.0.1:5000/harvest/', report)
+    file_names = os.listdir(path)
+    for file_name in file_names:
+        file_with_path = os.path.join(path, file_name)
+        file_size = os.path.getsize(file_with_path)
+        # get the hashes of the files
+        md5_file_hash = md5_hash(file_with_path)
+        sha1_file_hash = sha1_hash(file_with_path)
+        # store the data in a dictionary
+        report = {'file_name': file_name.rsplit('.')[0], 'file_type': file_name.rsplit('.')[1],
+                  'file_size': file_size, 'md5': md5_file_hash, 'sha1': sha1_file_hash}
+        requests.post('http://127.0.0.1:5000/harvest/', report)

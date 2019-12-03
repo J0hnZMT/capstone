@@ -67,7 +67,6 @@ def get_all_link(base_url, content):
                                 logger.info("{} saved to database...".format(app_name.rstrip()))
                             else:
                                 logger.info("Already saved to database...")
-            # return links_found
             process_dl_page(base_url, links_found)
     except Exception as e:
         print(e)
@@ -92,14 +91,6 @@ def process_dl_page(main_link, links):
         store into db also return a dict of retrieve app name and version
         """
         get_metadata(dl_url)
-        content = web_scraper(dl_url)
-        dl_links = get_download_link(main_link, content)
-        for dl_link in dl_links:
-            file_name = dl_link.rsplit('/', 1)[1]
-            dl_binary = get_binary(file_name)
-            url = 'http://127.0.0.1:5000/harvest/upload'
-            r = requests.post(url, files=dl_binary)
-            print(r.content)
 
 
 def get_download_link(main_url, content):
@@ -139,32 +130,6 @@ def get_metadata(url):
     content = web_scraper(url)
     dl_links = get_download_link(base.rstrip('utils'), content)
     html = BeautifulSoup(content, 'lxml')
-    data = app_ver_retriever(result, html)
-    name = data['filename']
-    app_version = data['version'].lstrip('{} '.format(name))
-    name_query = """SELECT app_name FROM {}""".format(data_table)
-    app_names_db = dbmanager.select(name_query, parameters, database)
-    ver_query = """SELECT app_ver FROM {} WHERE app_name = '{}'""".format(data_table, name)
-    app_ver_db = dbmanager.select(ver_query, parameters, database)
-    if name not in [str(y) for x in app_names_db for y in x]:
-        query = """INSERT INTO {}(app_name, app_ver) VALUES ('{}', '{}');""".format(data_table, name, app_version)
-        dbmanager.insert(query, parameters, database)
-        logger.info("{} saved to database...".format(name))
-        for dl_link in dl_links:
-            download_program(dl_link)
-            logger.info("{} downloadable file saved.".format(name))
-    elif app_ver_db[0][0] != app_version:
-        query = """INSERT INTO {}(app_name, app_ver) VALUES ('{}', '{}');""".format(data_table, name, app_version)
-        dbmanager.insert(query, parameters, database)
-        logger.info("{} saved to database...".format(name))
-        for dl_link in dl_links:
-            download_program(dl_link)
-            logger.info("{} downloadable file saved.".format(name))
-    # language and version
-    lang_app_ver_retriever(content)
-
-
-def app_ver_retriever(result, html):
     if ':' in result:
         name = result.rsplit(':')[0]
         ver = html(text=re.compile(r'{} v'.format(name)))
@@ -178,7 +143,37 @@ def app_ver_retriever(result, html):
         version = str(ver[0]).split(' - ')[0]
     else:
         version = str(ver[0]).strip('\n')
-    return {'filename': name, 'version': version}
+    app_version = version.lstrip('{} '.format(name))
+    name_query = """SELECT app_name FROM {}""".format(data_table)
+    app_names_db = dbmanager.select(name_query, parameters, database)
+    ver_query = """SELECT app_ver FROM {} WHERE app_name = '{}'""".format(data_table, name)
+    app_ver_db = dbmanager.select(ver_query, parameters, database)
+    # check if names is already on the database
+    if name not in [str(y) for x in app_names_db for y in x]:
+        query = """INSERT INTO {}(app_name, app_ver) VALUES ('{}', '{}');""".format(data_table, name, app_version)
+        dbmanager.insert(query, parameters, database)
+        logger.info("{} saved to database...".format(name))
+        for dl_link in dl_links:
+            download_program(dl_link)
+            logger.info("{} downloadable file saved.".format(name))
+    # check if the version is updated
+    elif app_ver_db[0][0] != app_version:
+        query = """INSERT INTO {}(app_name, app_ver) VALUES ('{}', '{}');""".format(data_table, name, app_version)
+        dbmanager.insert(query, parameters, database)
+        logger.info("{} saved to database...".format(name))
+        for dl_link in dl_links:
+            download_program(dl_link)
+            logger.info("{} downloadable file saved.".format(name))
+    # language and version
+    lang_app_ver_retriever(content)
+
+
+def upload(dl_path):
+    files = os.listdir(dl_path)
+    for file in files:
+        dl_binary = get_binary(file)
+        url = 'http://127.0.0.1:5000/harvest/upload'
+        r = requests.post(url, files=dl_binary)
 
 
 def lang_app_ver_retriever(content):
@@ -203,6 +198,7 @@ def main(url):
     dbmanager.create_db(parameters, database)
     web_content = web_scraper(url)
     get_all_link(url, web_content)
-
+    dl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'downloads')
+    upload(dl_path)
 
 
