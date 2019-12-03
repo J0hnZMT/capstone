@@ -58,7 +58,10 @@ class MetadataApi(Resource):
         if len(file_hash) == 32:
             MetadataMonitor.query.filter_by(md5=data['hash']).delete()
             db.session.commit()
+            select_hash = MetadataMonitor.query.filter_by(md5=data['hash'])
+            result = api_many_schema.dump(select_hash).data
             # delete also the existing file
+
             return {"status": 'success', "message": 'file deleted'}, 200
         elif len(file_hash) == 40:
             MetadataMonitor.query.filter_by(sha1=data['hash']).delete()
@@ -86,7 +89,7 @@ class MetadataList(Resource):
         if query_insert:
             return {'message': 'Job already exists'}, 400
         query_insert = MetadataMonitor(
-            file_name=json_data['job_id'],
+            file_name=json_data['file_name'],
             file_type=json_data['file_type'],
             file_size=json_data['file_size'],
             sha1=json_data['sha1'],
