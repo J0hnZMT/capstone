@@ -34,23 +34,6 @@ class MetadataMonitorSchema(ma.Schema):
     md5 = fields.String(validate=validate.Length(1))
 
 
-class HarvestMonitor(db.Model):
-    table = config_opener('setup.ini', 'tables')
-    __tablename__ = table['api_upload_table']
-    id = db.Column(db.Integer, primary_key=True)
-    file_name = db.Column(db.String(150), nullable=False)
-    app_url = db.Column(db.String(150), nullable=False)
-
-    def __init__(self, file_name, app_url):
-        self.file_name = file_name
-        self.app_url = app_url
-
-
-class HarvestMonitorSchema(ma.Schema):
-    id = fields.Integer(dump_only=True)
-    file_name = fields.String(validate=validate.Length(1))
-    app_url = fields.String(validate=validate.Length(1))
-
 
 
 

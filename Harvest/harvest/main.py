@@ -34,7 +34,10 @@ trans_table = tables['trans_table']
 create_trans = """id SERIAL NOT NULL PRIMARY KEY,
             lang_name varchar NOT NULL,
             lang_ver varchar NOT NULL"""
-
+api_response = tables['api_response']
+create_response = """id SERIAL NOT NULL PRIMARY KEY,
+            app_name varchar NOT NULL,
+            response varchar NOT NULL"""
 '''
     Main Functions
 '''
@@ -169,11 +172,17 @@ def get_metadata(url):
 
 
 def upload(dl_path):
+    dbmanager.create_table(api_response, create_response, parameters, database)
     files = os.listdir(dl_path)
     for file in files:
         dl_binary = get_binary(file)
         url = 'http://127.0.0.1:5000/harvest/upload'
         r = requests.post(url, files=dl_binary)
+        resp = r.json()
+        # save the response of api to the database
+        query = """INSERT INTO {}(app_name, response) VALUES ('{}', '{}');"""\
+            .format(api_response, file, resp.get('message'))
+        dbmanager.insert(query, parameters, database)
 
 
 def lang_app_ver_retriever(content):

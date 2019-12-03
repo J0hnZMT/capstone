@@ -29,6 +29,8 @@ def download_program(url):
             if not os.path.exists(file_name):
                 with open(file_name, "wb") as file:
                     file.write(html_content)
+            else:
+                logging.info("{} file already saved".format(file_name))
         except TypeError as e:
             logging.error("Download Fail!", e)
 

@@ -1,4 +1,5 @@
 from flask import request
+import os
 from flask_restful import Resource
 from harvestapi.model import db, MetadataMonitor, MetadataMonitorSchema
 
@@ -61,12 +62,19 @@ class MetadataApi(Resource):
             select_hash = MetadataMonitor.query.filter_by(md5=data['hash'])
             result = api_many_schema.dump(select_hash).data
             # delete also the existing file
-
+            file = result['file_name']
+            path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'downloads')
+            os.remove(os.path.join(path, file))
             return {"status": 'success', "message": 'file deleted'}, 200
         elif len(file_hash) == 40:
             MetadataMonitor.query.filter_by(sha1=data['hash']).delete()
             db.session.commit()
+            select_hash = MetadataMonitor.query.filter_by(sha1=data['hash'])
+            result = api_many_schema.dump(select_hash).data
             # delete also the existing file
+            file = result['file_name']
+            path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'downloads')
+            os.remove(os.path.join(path, file))
             return {"status": 'success', "message": 'file deleted'}, 200
 
 
@@ -76,26 +84,3 @@ class MetadataList(Resource):
         select_all = MetadataMonitor.query.all()
         result = api_many_schema.dump(select_all).data
         return {'status': 'success', 'data': result}, 200
-
-    def post(self):
-        json_data = request.get_json(force=True)
-        if not json_data:
-            return {'message': 'No input data provided'}, 400
-        # Validate and deserialize input
-        data, errors = api_schema.load(json_data)
-        if errors:
-            return errors, 422
-        query_insert = MetadataMonitor.query.filter_by(file_name=data['file_name']).first()
-        if query_insert:
-            return {'message': 'Job already exists'}, 400
-        query_insert = MetadataMonitor(
-            file_name=json_data['file_name'],
-            file_type=json_data['file_type'],
-            file_size=json_data['file_size'],
-            sha1=json_data['sha1'],
-            md5=json_data['md5']
-        )
-        db.session.add(query_insert)
-        db.session.commit()
-        result = api_schema.dump(query_insert).data
-        return {"status": 'success', 'data': result}, 201
