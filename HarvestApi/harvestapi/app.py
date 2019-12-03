@@ -13,7 +13,7 @@ api = Api(api_bp)
 
 # Route
 api.add_resource(MetadataList, '/')
-api.add_resource(MetadataApi, '/<hash>')
+api.add_resource(MetadataApi, '/<file_hash>')
 api.add_resource(UploadApi, '/upload')
 
 

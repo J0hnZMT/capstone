@@ -21,7 +21,7 @@ class MetadataApi(Resource):
             result = api_many_schema.dump(select_hash).data
             return {'status': 'success', 'data': result}, 200
 
-    # update the meat data of a file based on the hash given
+    # update the meat data of a file based on the hash given9
     def put(self, file_hash):
         search_data = {"hash": file_hash}
         json_data = request.get_json(force=True)

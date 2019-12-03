@@ -176,7 +176,8 @@ def upload(dl_path):
     files = os.listdir(dl_path)
     for file in files:
         dl_binary = get_binary(file)
-        url = 'http://127.0.0.1:5000/harvest/upload'
+        api = config_opener('setup.ini', 'harvest')
+        url = api['api_url']
         r = requests.post(url, files=dl_binary)
         resp = r.json()
         # save the response of api to the database
