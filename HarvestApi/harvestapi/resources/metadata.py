@@ -60,7 +60,7 @@ class MetadataApi(Resource):
             MetadataMonitor.query.filter_by(md5=data['hash']).delete()
             db.session.commit()
             select_hash = MetadataMonitor.query.filter_by(md5=data['hash'])
-            result = api_many_schema.dump(select_hash).data
+            result = api_schema.dump(select_hash).data
             # delete also the existing file
             file = result['file_name']
             path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'downloads')
@@ -70,7 +70,7 @@ class MetadataApi(Resource):
             MetadataMonitor.query.filter_by(sha1=data['hash']).delete()
             db.session.commit()
             select_hash = MetadataMonitor.query.filter_by(sha1=data['hash'])
-            result = api_many_schema.dump(select_hash).data
+            result = api_schema.dump(select_hash).data
             # delete also the existing file
             file = result['file_name']
             path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'downloads')
