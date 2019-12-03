@@ -2,15 +2,13 @@
 import argparse
 import configparser
 import os
-
-
 from harvest import main
 
 parser = argparse.ArgumentParser()
 config = configparser.ConfigParser()
 parser.add_argument("url", nargs='?', help="The url you want your harvest to occur", type=str)
 args = parser.parse_args()
-if args.dir is None and args.csv_file_name is None:
+if args.url is None:
     path = os.path.dirname(__file__)
     config.read(os.path.join(path, 'setup.ini'))
     # using the default arguments from setup.ini

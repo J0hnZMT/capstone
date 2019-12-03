@@ -70,11 +70,11 @@ Then run the images
 $  docker run --rm --name <container_name> -e POSTGRES_PASSWORD=<password> --network <network>
  -v <volume> <db_image_name>
 
-# container for Harvest
-$ docker run --network <network> --name <container_name> <harvest_image_name>
-
 # container for API
 $ docker run --network <network> -p <ports> --name <container_name> <api_image_name>
+
+# container for Harvest
+$ docker run --network <network> --name <container_name> <harvest_image_name>
 ```
 The Harvest will start harvesting and it will also going to upload the harvested files to the API.
  
