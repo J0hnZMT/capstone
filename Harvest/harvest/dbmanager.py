@@ -70,7 +70,6 @@ def insert(query, params, db):
         cur.execute(query)
         cur.close()
         conn.close()
-        logger.info("Saved to database...")
     except Exception as error:
         # log the error message
         logger.exception(error)

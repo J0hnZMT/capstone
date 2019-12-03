@@ -1,5 +1,7 @@
 import logging
+import os
 import re
+import requests
 from bs4 import BeautifulSoup
 from harvest import dbmanager
 from harvest.config import config_opener
@@ -62,6 +64,7 @@ def get_all_link(base_url, content):
                                 query = """INSERT INTO {}(app_name, url) 
                                          VALUES ('{}', '{}');""".format(link_table, app_name.rstrip(), found_link)
                                 dbmanager.insert(query, parameters, database)
+                                logger.info("{} saved to database...".format(app_name.rstrip()))
                             else:
                                 logger.info("Already saved to database...")
             # return links_found
@@ -70,28 +73,33 @@ def get_all_link(base_url, content):
         print(e)
 
 
+def get_binary(file):
+    download_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'downloads')
+    full_path = os.path.join(download_path, file)
+    binary_file = {'file': open(full_path, 'rb')}
+    return binary_file
+
+
 def process_dl_page(main_link, links):
     dbmanager.create_table(data_table, create_data, parameters, database)
     dbmanager.create_table(trans_table, create_trans, parameters, database)
+    # get the url of the download page on the list
     for link in links:
+        # complete the download page url
         dl_url = "{}{}".format(main_link, link)
-        # get all the content of the downloadable page
-        dl_content = web_scraper(dl_url)
-        # download links from the download page
-        dl_links = get_download_link(main_link, dl_content)
-        # get the app name and version and store into db
-        app_name = get_metadata(dl_url)
-        query = """ SELECT app_name FROM {}""".format(data_table)
-        app_names = dbmanager.select(query, parameters, database)
-        # for dl_link in dl_links:
-        #     download_program(dl_link)
-        if app_name not in [str(y) for x in app_names for y in x]:
-            # download files
-            for dl_link in dl_links:
-                download_program(dl_link)
-                logger.info("{} downloadable files saved.".format(app_name))
-        else:
-            print("Failed to download")
+        """ 
+        retrieve the app name and version with its languages and 
+        store into db also return a dict of retrieve app name and version
+        """
+        get_metadata(dl_url)
+        content = web_scraper(dl_url)
+        dl_links = get_download_link(main_link, content)
+        for dl_link in dl_links:
+            file_name = dl_link.rsplit('/', 1)[1]
+            dl_binary = get_binary(file_name)
+            url = 'http://127.0.0.1:5000/harvest/upload'
+            r = requests.post(url, files=dl_binary)
+            print(r.content)
 
 
 def get_download_link(main_url, content):
@@ -125,10 +133,38 @@ def check_dl_link(main_url, url):
 def get_metadata(url):
     # app name and version
     link = url.rsplit('0/', 1)[1]
+    base = url.rsplit('/', 1)[0]
     select_query = """SELECT app_name FROM {} WHERE url = '{}'""".format(link_table, link)
     result = dbmanager.select(select_query, parameters, database)[0][0]
     content = web_scraper(url)
+    dl_links = get_download_link(base.rstrip('utils'), content)
     html = BeautifulSoup(content, 'lxml')
+    data = app_ver_retriever(result, html)
+    name = data['filename']
+    app_version = data['version'].lstrip('{} '.format(name))
+    name_query = """SELECT app_name FROM {}""".format(data_table)
+    app_names_db = dbmanager.select(name_query, parameters, database)
+    ver_query = """SELECT app_ver FROM {} WHERE app_name = '{}'""".format(data_table, name)
+    app_ver_db = dbmanager.select(ver_query, parameters, database)
+    if name not in [str(y) for x in app_names_db for y in x]:
+        query = """INSERT INTO {}(app_name, app_ver) VALUES ('{}', '{}');""".format(data_table, name, app_version)
+        dbmanager.insert(query, parameters, database)
+        logger.info("{} saved to database...".format(name))
+        for dl_link in dl_links:
+            download_program(dl_link)
+            logger.info("{} downloadable file saved.".format(name))
+    elif app_ver_db[0][0] != app_version:
+        query = """INSERT INTO {}(app_name, app_ver) VALUES ('{}', '{}');""".format(data_table, name, app_version)
+        dbmanager.insert(query, parameters, database)
+        logger.info("{} saved to database...".format(name))
+        for dl_link in dl_links:
+            download_program(dl_link)
+            logger.info("{} downloadable file saved.".format(name))
+    # language and version
+    lang_app_ver_retriever(content)
+
+
+def app_ver_retriever(result, html):
     if ':' in result:
         name = result.rsplit(':')[0]
         ver = html(text=re.compile(r'{} v'.format(name)))
@@ -142,13 +178,11 @@ def get_metadata(url):
         version = str(ver[0]).split(' - ')[0]
     else:
         version = str(ver[0]).strip('\n')
-    app_version = version.lstrip('{} '.format(name))
-    select_query = """SELECT app_name FROM {}""".format(data_table)
-    app_names_db = dbmanager.select(select_query, parameters, database)
-    if name not in [str(y) for x in app_names_db for y in x]:
-        query = """INSERT INTO {}(app_name, app_ver) VALUES ('{}', '{}');""".format(data_table, name, app_version)
-        dbmanager.insert(query, parameters, database)
-    # language and version
+    return {'filename': name, 'version': version}
+
+
+def lang_app_ver_retriever(content):
+    html = BeautifulSoup(content, 'lxml')
     table = html.find_all('tr', class_='utiltableheader')[-1].find_parent('table')
     tr = table.find_all('tr')[1:]
     for td in tr:
@@ -157,12 +191,12 @@ def get_metadata(url):
         select_query = """SELECT lang_name FROM {}""".format(trans_table)
         lang_names_db = dbmanager.select(select_query, parameters, database)
         if str(lang).lstrip('trans/') not in [str(y) for x in lang_names_db for y in x]:
-            query = """INSERT INTO {}(lang_name, lang_ver) VALUES ('{}', '{}');"""\
+            query = """INSERT INTO {}(lang_name, lang_ver) VALUES ('{}', '{}');""" \
                 .format(trans_table, str(lang).lstrip('trans/'), ver)
             dbmanager.insert(query, parameters, database)
+            logger.info("{} saved to database...".format(lang))
         else:
             logger.info("{} already saved in database".format(str(lang).lstrip('trans/')))
-    return name
 
 
 def main(url):
